@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Get in Touch | Christa Stamper</title>
+<meta name="description" content="Reach out to Christa Stamper to ask questions or schedule a counseling session.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Caveat:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="index.html" class="brand">Christa Stamper</a>
+    <nav class="main-nav">
+      <div class="has-dropdown">
+        <button class="dropdown-trigger" aria-haspopup="true">
+          About
+          <svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </button>
+        <div class="dropdown-menu">
+          <a href="about/bio.html">Bio</a>
+          <a href="about/distinctives.html">Distinctives</a>
+          <a href="about/rates.html">Rates</a>
+          <a href="about/locations.html">Locations</a>
+        </div>
+      </div>
+      <a href="scheduling.html">Scheduling</a>
+      <a href="contact.html" class="is-current">Get in Touch</a>
+      <a href="resources.html">Resources</a>
+    </nav>
+    <a href="contact.html" class="btn btn-primary nav-cta">Get in Touch</a>
+    <button type="button" class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="mobileNav" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <nav class="mobile-nav" id="mobileNav">
+    <button class="mobile-dropdown-trigger" id="mobileAboutToggle" aria-expanded="false" aria-controls="mobileAboutMenu">
+      About
+      <svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    <div class="mobile-submenu" id="mobileAboutMenu">
+      <a href="about/bio.html">Bio</a>
+      <a href="about/distinctives.html">Distinctives</a>
+      <a href="about/rates.html">Rates</a>
+      <a href="about/locations.html">Locations</a>
+    </div>
+    <a href="scheduling.html">Scheduling</a>
+    <a href="contact.html" class="is-current">Get in Touch</a>
+    <a href="resources.html">Resources</a>
+  </nav>
+</header>
+
+<script>
+(function () {
+  var toggle = document.getElementById('menuToggle');
+  var nav = document.getElementById('mobileNav');
+  toggle.addEventListener('click', function () {
+    var isOpen = nav.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  var aboutToggle = document.getElementById('mobileAboutToggle');
+  var aboutMenu = document.getElementById('mobileAboutMenu');
+  aboutToggle.addEventListener('click', function () {
+    var isOpen = aboutMenu.classList.toggle('is-open');
+    aboutToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  nav.querySelectorAll('a').forEach(function (link) {
+    link.addEventListener('click', function () {
+      nav.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+    });
+  });
+})();
+</script>
+
+<main>
+
+  <section class="page-hero">
+    <div class="wrap">
+      <p class="eyebrow">Get in touch</p>
+      <h1>Let's connect</h1>
+      <p class="page-hero-sub">Questions, or ready to schedule a first session? Reach out below &mdash; Christa typically replies within one business day.</p>
+    </div>
+  </section>
+
+  <section class="simple-contact">
+    <div class="wrap">
+      <form class="contact-form" data-netlify="true" name="contact" netlify-honeypot="bot-field">
+        <input type="hidden" name="form-name" value="contact">
+        <p class="hidden-field"><label>Don't fill this out: <input name="bot-field"></label></p>
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+        <label for="message">Message</label>
+        <textarea id="message" name="message" rows="5" required placeholder="Share a little about what brings you here, or any questions you have."></textarea>
+        <button type="submit" class="btn btn-primary">Send message</button>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p class="footer-brand">Christa Stamper</p>
+    <p class="footer-disclaimer">Christa Stamper offers biblical, pastoral counseling and is not a licensed mental health professional. Sessions are not a substitute for diagnosis or treatment by a licensed therapist, psychologist, or physician. If you are experiencing a mental health emergency, call or text 988 (Suicide &amp; Crisis Lifeline) or call 911.</p>
+    <p class="footer-copy">&copy; 2026 Christa Stamper. All rights reserved.</p>
+  </div>
+</footer>
+
+</body>
+</html>

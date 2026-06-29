@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distinctives | Christa Stamper</title>
+<meta name="description" content="What is biblical counseling, and how does it differ from licensed clinical therapy? Christa Stamper's approach, aligned with CCEF.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Caveat:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="../index.html" class="brand">Christa Stamper</a>
+    <nav class="main-nav">
+      <div class="has-dropdown">
+        <button class="dropdown-trigger" aria-haspopup="true">
+          About
+          <svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </button>
+        <div class="dropdown-menu">
+          <a href="bio.html">Bio</a>
+          <a href="distinctives.html" class="is-current">Distinctives</a>
+          <a href="rates.html">Rates</a>
+          <a href="locations.html">Locations</a>
+        </div>
+      </div>
+      <a href="../scheduling.html">Scheduling</a>
+      <a href="../contact.html">Get in Touch</a>
+      <a href="../resources.html">Resources</a>
+    </nav>
+    <a href="../contact.html" class="btn btn-primary nav-cta">Get in Touch</a>
+    <button type="button" class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="mobileNav" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <nav class="mobile-nav" id="mobileNav">
+    <button class="mobile-dropdown-trigger" id="mobileAboutToggle" aria-expanded="true" aria-controls="mobileAboutMenu">
+      About
+      <svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    <div class="mobile-submenu is-open" id="mobileAboutMenu">
+      <a href="bio.html">Bio</a>
+      <a href="distinctives.html" class="is-current">Distinctives</a>
+      <a href="rates.html">Rates</a>
+      <a href="locations.html">Locations</a>
+    </div>
+    <a href="../scheduling.html">Scheduling</a>
+    <a href="../contact.html">Get in Touch</a>
+    <a href="../resources.html">Resources</a>
+  </nav>
+</header>
+
+<script>
+(function () {
+  var toggle = document.getElementById('menuToggle');
+  var nav = document.getElementById('mobileNav');
+  toggle.addEventListener('click', function () {
+    var isOpen = nav.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  var aboutToggle = document.getElementById('mobileAboutToggle');
+  var aboutMenu = document.getElementById('mobileAboutMenu');
+  aboutToggle.addEventListener('click', function () {
+    var isOpen = aboutMenu.classList.toggle('is-open');
+    aboutToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  nav.querySelectorAll('a').forEach(function (link) {
+    link.addEventListener('click', function () {
+      nav.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+    });
+  });
+})();
+</script>
+
+<main>
+
+  <section class="page-hero">
+    <div class="wrap">
+      <p class="eyebrow">About Christa</p>
+      <h1>Distinctives</h1>
+      <p class="page-hero-sub">What biblical counseling is, and how it shapes the way Christa works with you.</p>
+      <nav class="about-subnav" aria-label="About section pages">
+        <a href="bio.html">Bio</a>
+        <a href="distinctives.html" class="is-current">Distinctives</a>
+        <a href="rates.html">Rates</a>
+        <a href="locations.html">Locations</a>
+      </nav>
+    </div>
+  </section>
+
+  <section class="page-content">
+    <div class="wrap">
+
+      <h2>What is biblical counseling?</h2>
+      <p>Biblical counseling is care for the whole person &mdash; mind, heart, body, and relationships &mdash; shaped by the conviction that Scripture speaks meaningfully into every part of life, including our deepest struggles. It isn't simply quoting verses at a problem. It's bringing the wisdom, comfort, and truth of God's Word into conversation with the real, specific details of someone's story.</p>
+
+      <p>Christa's approach is aligned with the counseling distinctives taught by the Christian Counseling &amp; Educational Foundation (CCEF), where she completed her Foundations of Biblical Counseling Certificate.</p>
+
+      <h2>A few convictions that shape how Christa works</h2>
+
+      <h3 style="font-family: var(--font-display); font-size: 19px; margin-bottom: 0.4em;">God draws near to the suffering</h3>
+      <p>Scripture consistently describes God as present with people in their pain, not distant from it. Counseling, from this view, isn't about fixing a problem from a clinical distance &mdash; it's about walking alongside someone the way God himself draws near to the brokenhearted.</p>
+
+      <h3 style="font-family: var(--font-display); font-size: 19px; margin-bottom: 0.4em;">People are more than their symptoms</h3>
+      <p>We're shaped by our bodies, our relationships, our histories, and our circumstances &mdash; and also by what we love, fear, and desire at the level of the heart. Good care pays attention to all of it, not just the presenting problem.</p>
+
+      <h3 style="font-family: var(--font-display); font-size: 19px; margin-bottom: 0.4em;">Change doesn't follow a script</h3>
+      <p>What helps one person may not help another. Sometimes a particular passage of Scripture brings clarity. Sometimes it's being truly heard for the first time. Sometimes it's slow, ordinary faithfulness over many sessions. Christa aims to listen well enough to know which is needed, when.</p>
+
+      <h3 style="font-family: var(--font-display); font-size: 19px; margin-bottom: 0.4em;">Humility, not formulas</h3>
+      <p>Caring for souls isn't a formula to apply. It calls for humility &mdash; a constant reliance on God, on Scripture, and on genuinely listening to the person in front of you rather than assuming you already know what they need.</p>
+
+      <div class="callout">
+        <p>Biblical counseling is distinct from licensed clinical therapy. Christa is a trained biblical and pastoral counselor, not a licensed mental health professional, and her sessions are not a substitute for licensed treatment when that is needed.</p>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p class="footer-brand">Christa Stamper</p>
+    <p class="footer-disclaimer">Christa Stamper offers biblical, pastoral counseling and is not a licensed mental health professional. Sessions are not a substitute for diagnosis or treatment by a licensed therapist, psychologist, or physician. If you are experiencing a mental health emergency, call or text 988 (Suicide &amp; Crisis Lifeline) or call 911.</p>
+    <p class="footer-copy">&copy; 2026 Christa Stamper. All rights reserved.</p>
+  </div>
+</footer>
+
+</body>
+</html>

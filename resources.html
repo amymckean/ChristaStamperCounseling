@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Resources | Christa Stamper</title>
+<meta name="description" content="Helpful resources from Christa Stamper for anxiety, grief, trauma, and other life challenges.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Caveat:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a href="index.html" class="brand">Christa Stamper</a>
+    <nav class="main-nav">
+      <div class="has-dropdown">
+        <button class="dropdown-trigger" aria-haspopup="true">
+          About
+          <svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </button>
+        <div class="dropdown-menu">
+          <a href="about/bio.html">Bio</a>
+          <a href="about/distinctives.html">Distinctives</a>
+          <a href="about/rates.html">Rates</a>
+          <a href="about/locations.html">Locations</a>
+        </div>
+      </div>
+      <a href="scheduling.html">Scheduling</a>
+      <a href="contact.html">Get in Touch</a>
+      <a href="resources.html" class="is-current">Resources</a>
+    </nav>
+    <a href="contact.html" class="btn btn-primary nav-cta">Get in Touch</a>
+    <button type="button" class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="mobileNav" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <nav class="mobile-nav" id="mobileNav">
+    <button class="mobile-dropdown-trigger" id="mobileAboutToggle" aria-expanded="false" aria-controls="mobileAboutMenu">
+      About
+      <svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    <div class="mobile-submenu" id="mobileAboutMenu">
+      <a href="about/bio.html">Bio</a>
+      <a href="about/distinctives.html">Distinctives</a>
+      <a href="about/rates.html">Rates</a>
+      <a href="about/locations.html">Locations</a>
+    </div>
+    <a href="scheduling.html">Scheduling</a>
+    <a href="contact.html">Get in Touch</a>
+    <a href="resources.html" class="is-current">Resources</a>
+  </nav>
+</header>
+
+<script>
+(function () {
+  var toggle = document.getElementById('menuToggle');
+  var nav = document.getElementById('mobileNav');
+  toggle.addEventListener('click', function () {
+    var isOpen = nav.classList.toggle('is-open');
+    toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  var aboutToggle = document.getElementById('mobileAboutToggle');
+  var aboutMenu = document.getElementById('mobileAboutMenu');
+  aboutToggle.addEventListener('click', function () {
+    var isOpen = aboutMenu.classList.toggle('is-open');
+    aboutToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  nav.querySelectorAll('a').forEach(function (link) {
+    link.addEventListener('click', function () {
+      nav.classList.remove('is-open');
+      toggle.setAttribute('aria-expanded', 'false');
+    });
+  });
+})();
+</script>
+
+<main>
+
+  <section class="page-hero">
+    <div class="wrap">
+      <p class="eyebrow">Resources</p>
+      <h1>A few helpful starting points</h1>
+      <p class="page-hero-sub">Some resources Christa often points clients toward, alongside counseling &mdash; not a substitute for it.</p>
+    </div>
+  </section>
+
+  <section class="page-content">
+    <div class="wrap">
+      <div class="resource-list">
+
+        <div class="resource-item">
+          <h3>988 Suicide &amp; Crisis Lifeline</h3>
+          <p>Call or text 988 for free, confidential support, 24/7, if you or someone you know is in crisis.</p>
+        </div>
+
+        <div class="resource-item">
+          <h3>CCEF (Christian Counseling &amp; Educational Foundation)</h3>
+          <p>Articles, resources, and teaching on biblical counseling topics, from the organization where Christa earned her certification.</p>
+        </div>
+
+        <div class="resource-item">
+          <h3>National Domestic Violence Hotline</h3>
+          <p>Call 1-800-799-7233 or text "START" to 88788 for confidential support related to abuse.</p>
+        </div>
+
+        <div class="resource-item">
+          <h3>[Additional resources to be added]</h3>
+          <p>Christa may add book recommendations, articles, or other resources here over time.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p class="footer-brand">Christa Stamper</p>
+    <p class="footer-disclaimer">Christa Stamper offers biblical, pastoral counseling and is not a licensed mental health professional. Sessions are not a substitute for diagnosis or treatment by a licensed therapist, psychologist, or physician. If you are experiencing a mental health emergency, call or text 988 (Suicide &amp; Crisis Lifeline) or call 911.</p>
+    <p class="footer-copy">&copy; 2026 Christa Stamper. All rights reserved.</p>
+  </div>
+</footer>
+
+</body>
+</html>

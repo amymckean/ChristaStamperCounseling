@@ -4,33 +4,53 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Christa Stamper | Biblical &amp; Pastoral Counseling</title>
-<meta name="description" content="Biblical, pastoral counseling with Christa Stamper. Individual sessions for anxiety, grief, trauma, and life transitions &mdash; in-person or virtual.">
+<meta name="description" content="Biblical, pastoral counseling with Christa Stamper. Virtual individual sessions for anxiety, grief, trauma, and life transitions.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Caveat:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600&family=Caveat:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <header class="site-header">
   <div class="wrap header-inner">
-    <a href="#top" class="brand">Christa Stamper</a>
+    <a href="index.html" class="brand">Christa Stamper</a>
     <nav class="main-nav">
-      <a href="#about">About</a>
-      <a href="#approach">Approach</a>
-      <a href="#booking">Book a session</a>
-      <a href="#contact">Contact</a>
+      <div class="has-dropdown">
+        <button class="dropdown-trigger" aria-haspopup="true">
+          About
+          <svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+        </button>
+        <div class="dropdown-menu">
+          <a href="about/bio.html">Bio</a>
+          <a href="about/distinctives.html">Distinctives</a>
+          <a href="about/rates.html">Rates</a>
+          <a href="about/locations.html">Locations</a>
+        </div>
+      </div>
+      <a href="scheduling.html">Scheduling</a>
+      <a href="contact.html">Get in Touch</a>
+      <a href="resources.html">Resources</a>
     </nav>
-    <a href="#booking" class="btn btn-primary nav-cta">Schedule</a>
+    <a href="contact.html" class="btn btn-primary nav-cta">Get in Touch</a>
     <button type="button" class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="mobileNav" aria-label="Open menu">
       <span></span><span></span><span></span>
     </button>
   </div>
   <nav class="mobile-nav" id="mobileNav">
-    <a href="#about">About</a>
-    <a href="#approach">Approach</a>
-    <a href="#booking">Book a session</a>
-    <a href="#contact">Contact</a>
+    <button class="mobile-dropdown-trigger" id="mobileAboutToggle" aria-expanded="false" aria-controls="mobileAboutMenu">
+      About
+      <svg viewBox="0 0 12 8" aria-hidden="true"><path d="M1 1 L6 6 L11 1" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg>
+    </button>
+    <div class="mobile-submenu" id="mobileAboutMenu">
+      <a href="about/bio.html">Bio</a>
+      <a href="about/distinctives.html">Distinctives</a>
+      <a href="about/rates.html">Rates</a>
+      <a href="about/locations.html">Locations</a>
+    </div>
+    <a href="scheduling.html">Scheduling</a>
+    <a href="contact.html">Get in Touch</a>
+    <a href="resources.html">Resources</a>
   </nav>
 </header>
 
@@ -41,6 +61,12 @@
   toggle.addEventListener('click', function () {
     var isOpen = nav.classList.toggle('is-open');
     toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+  });
+  var aboutToggle = document.getElementById('mobileAboutToggle');
+  var aboutMenu = document.getElementById('mobileAboutMenu');
+  aboutToggle.addEventListener('click', function () {
+    var isOpen = aboutMenu.classList.toggle('is-open');
+    aboutToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   });
   nav.querySelectorAll('a').forEach(function (link) {
     link.addEventListener('click', function () {
@@ -55,61 +81,24 @@
 
   <section class="hero">
     <div class="wrap hero-inner">
-      <p class="eyebrow">Biblical &amp; pastoral counseling &mdash; Seattle area, WA</p>
+      <p class="eyebrow">Biblical &amp; pastoral counseling &mdash; available virtually</p>
       <h1 class="hero-title">
         A quiet place to be <span class="swash-wrap">honest<svg class="swash" viewBox="0 0 220 24" aria-hidden="true"><path d="M4 16 Q 55 2, 110 14 T 216 10" /></svg></span><br>
         about where you are.
       </h1>
       <p class="hero-sub">One-on-one counseling grounded in Scripture and held with grace &mdash; for anyone carrying something heavier than they can name on their own.</p>
       <div class="hero-actions">
-        <a href="#booking" class="btn btn-primary">Schedule a session</a>
-        <a href="#about" class="btn btn-ghost">Meet Christa</a>
+        <a href="contact.html" class="btn btn-primary">Get in touch</a>
+        <a href="about/bio.html" class="btn btn-ghost">Meet Christa</a>
       </div>
       <div class="verse-block">
         <p class="verse-text">"The Lord is near to the brokenhearted and saves the crushed in spirit."</p>
         <p class="verse-ref">Psalm 34:18</p>
       </div>
     </div>
-    <div class="hero-art" aria-hidden="true">
-      <svg viewBox="0 0 400 400" class="hero-blob">
-        <path d="M80 60 C 160 0, 320 30, 360 130 C 400 230, 330 330, 220 360 C 110 390, 10 320, 10 210 C 10 130, 20 110, 80 60 Z" />
-      </svg>
-    </div>
   </section>
 
   <div class="divider" aria-hidden="true">
-    <svg viewBox="0 0 1200 60" preserveAspectRatio="none"><path d="M0 30 Q 300 60 600 30 T 1200 30 V60 H0 Z" /></svg>
-  </div>
-
-  <section id="about" class="about">
-    <div class="wrap about-inner">
-      <div class="about-photo" aria-hidden="true">
-        <div class="photo-frame">
-          <span class="photo-label">photo of<br>Christa</span>
-        </div>
-      </div>
-      <div class="about-text">
-        <p class="eyebrow">About Christa</p>
-        <h2>A heart for the <span class="swash-wrap">hurting<svg class="swash swash-sm" viewBox="0 0 180 20" aria-hidden="true"><path d="M3 13 Q 45 2, 90 11 T 177 8" /></svg></span></h2>
-        <p>Christa has over 30 years of ministry experience &mdash; leading women's Bible studies and support groups for young mothers, counseling women and youth, launching a mentoring ministry, speaking, and writing.</p>
-        <p>She has a heart for the oppressed, forgotten, and hurting, and has walked beside many women and families in crisis due to abuse, oppression, and relational betrayal. She believes the heart of God as revealed in Scripture brings hope and healing to those who are suffering and have been harmed by others.</p>
-        <p>Christa lives in the Seattle area with her husband Greg. They recently celebrated their 30th wedding anniversary, have four young adult children, and are new empty nesters.</p>
-
-        <div class="credentials">
-          <p class="credentials-label">Training &amp; credentials</p>
-          <ul>
-            <li>Currently pursuing a Master of Arts in Counseling, Westminster Theological Seminary, Philadelphia, PA</li>
-            <li>Foundations of Biblical Counseling Certificate, CCEF</li>
-            <li>Certification in victim advocacy and trauma-informed care, Give Her Wings Academy</li>
-          </ul>
-        </div>
-
-        <p class="disclaimer-inline">Christa is not a licensed clinical therapist, but a trained biblical and pastoral counselor. Her sessions are not a substitute for licensed mental health treatment. If you are in crisis, please see the resources in the footer below.</p>
-      </div>
-    </div>
-  </section>
-
-  <div class="divider divider-flip" aria-hidden="true">
     <svg viewBox="0 0 1200 60" preserveAspectRatio="none"><path d="M0 30 Q 300 60 600 30 T 1200 30 V60 H0 Z" /></svg>
   </div>
 
@@ -125,8 +114,8 @@
         </div>
         <div class="card">
           <div class="card-icon" aria-hidden="true">&#10052;</div>
-          <h3>In-person or virtual</h3>
-          <p>Meet in the Seattle area, WA, or from wherever you are over video. Same care, your choice of setting.</p>
+          <h3>Virtual sessions</h3>
+          <p>Meet from wherever you are over secure video &mdash; no commute, same care and attention.</p>
         </div>
         <div class="card">
           <div class="card-icon" aria-hidden="true">&#10052;</div>
@@ -141,8 +130,9 @@
     <svg viewBox="0 0 1200 60" preserveAspectRatio="none"><path d="M0 30 Q 300 60 600 30 T 1200 30 V60 H0 Z" /></svg>
   </div>
 
-  <section id="specialties" class="approach">
-    <div class="wrap">
+  <section id="specialties" class="approach specialties-photo">
+    <div class="specialties-overlay" aria-hidden="true"></div>
+    <div class="wrap specialties-content">
       <p class="eyebrow center">How Christa can help</p>
       <h2 class="center">Walking alongside you <span class="swash-wrap">in<svg class="swash swash-sm" viewBox="0 0 60 20" aria-hidden="true"><path d="M3 13 Q 15 2, 30 11 T 57 8" /></svg></span></h2>
       <ul class="specialty-list">
@@ -160,58 +150,12 @@
     <svg viewBox="0 0 1200 60" preserveAspectRatio="none"><path d="M0 30 Q 300 60 600 30 T 1200 30 V60 H0 Z" /></svg>
   </div>
 
-  <section class="testimonial">
-    <div class="wrap">
-      <p class="eyebrow center">In her own words</p>
-      <p class="testimonial-quote">"Client testimonial will go here once available &mdash; a short reflection on what it was like to work with Christa."</p>
-      <p class="testimonial-note">&mdash; placeholder, pending a client testimonial</p>
-    </div>
-  </section>
-
-  <div class="divider" aria-hidden="true">
-    <svg viewBox="0 0 1200 60" preserveAspectRatio="none"><path d="M0 30 Q 300 60 600 30 T 1200 30 V60 H0 Z" /></svg>
-  </div>
-
-
-  <section id="booking" class="booking">
+  <section class="booking">
     <div class="wrap booking-inner">
-      <p class="eyebrow">Schedule a session</p>
-      <h2>Take the next <span class="swash-wrap">step<svg class="swash swash-sm" viewBox="0 0 100 20" aria-hidden="true"><path d="M3 13 Q 25 2, 50 11 T 97 8" /></svg></span></h2>
-      <p class="booking-sub">Pick a time that works, and pay securely at booking. You'll receive a confirmation by email with everything you need.</p>
-
-      <div class="booking-embed">
-        <div class="embed-placeholder">
-          <p><strong>Scheduler embed goes here</strong></p>
-          <p class="embed-note">This is where the Acuity Scheduling widget will be embedded once Christa's account is set up &mdash; clients will pick a session time and pay by card directly on this page.</p>
-        </div>
-      </div>
-
-      <p class="booking-footnote">Sessions are billed per visit at the time of booking. Cancellations require 24 hours notice.</p>
-    </div>
-  </section>
-
-  <div class="divider divider-flip" aria-hidden="true">
-    <svg viewBox="0 0 1200 60" preserveAspectRatio="none"><path d="M0 30 Q 300 60 600 30 T 1200 30 V60 H0 Z" /></svg>
-  </div>
-
-  <section id="contact" class="contact">
-    <div class="wrap contact-inner">
-      <div>
-        <p class="eyebrow">Get in touch</p>
-        <h2>Questions before you <span class="swash-wrap">book<svg class="swash swash-sm" viewBox="0 0 110 20" aria-hidden="true"><path d="M3 13 Q 28 2, 55 11 T 107 8" /></svg></span>?</h2>
-        <p>Reach out any time &mdash; Christa typically replies within one business day.</p>
-      </div>
-      <form class="contact-form" data-netlify="true" name="contact" netlify-honeypot="bot-field">
-        <input type="hidden" name="form-name" value="contact">
-        <p class="hidden-field"><label>Don't fill this out: <input name="bot-field"></label></p>
-        <label for="name">Name</label>
-        <input type="text" id="name" name="name" required>
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" required>
-        <label for="message">Message</label>
-        <textarea id="message" name="message" rows="4" required></textarea>
-        <button type="submit" class="btn btn-primary">Send message</button>
-      </form>
+      <p class="eyebrow">Ready to take the next step?</p>
+      <h2>Get in <span class="swash-wrap">touch<svg class="swash swash-sm" viewBox="0 0 110 20" aria-hidden="true"><path d="M3 13 Q 28 2, 55 11 T 107 8" /></svg></span></h2>
+      <p class="booking-sub">Reach out with questions, or to schedule a consultation. Christa typically replies within one business day.</p>
+      <a href="contact.html" class="btn btn-primary">Get in touch</a>
     </div>
   </section>
 
