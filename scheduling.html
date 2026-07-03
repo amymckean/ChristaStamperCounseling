@@ -108,10 +108,11 @@
     <div class="wrap booking-inner">
 
       <div class="booking-embed">
-        <div class="embed-placeholder">
-          <p><strong>Scheduler embed goes here</strong></p>
-          <p class="embed-note">This is where the online scheduling tool will be embedded once it's set up &mdash; clients will pick a session time and pay by card directly on this page.</p>
-        </div>
+        <!-- Practice Better Booking Widget: start -->
+        <style>.better-inline-booking-widget{position:relative;overflow:hidden}.better-inline-booking-widget iframe{position:absolute;top:0;left:0;width:100%;height:100%}</style>
+        <div class="better-inline-booking-widget" data-url="https://my.practicebetter.io" data-booking-page="" data-hash="6a47d441441138def55e16ab" data-theme="2c3b2e" data-theme-accent="c4957a" style="width:100%;max-width:550px;height:800px;" data-scrollbar-visible="false"></div>
+        <script type="text/javascript" src="https://cdn.practicebetter.io/assets/js/booking.widget.js"></script>
+        <!-- Practice Better Booking Widget: end -->
       </div>
 
       <p class="booking-footnote">Sessions are billed per visit at the time of booking. See the <a href="about/rates.html" style="color: var(--terracotta-text); font-weight: 600;">Rates page</a> for cancellation policy details.</p>
