@@ -121,53 +121,17 @@
       </div>
 
       <div class="booking-embed">
-        <!-- Practice Better Booking Widget: start -->
+<!-- Practice Better Booking Widget: start -->
         <style>
           .better-inline-booking-widget{position:relative;overflow:hidden}
           .better-inline-booking-widget iframe{position:absolute;top:0;left:0;width:100%;height:calc(100% + 20px);border:none;}
-          #pb-widget-wrap { transition: height 0.4s ease; overflow: hidden; }
+          #pb-widget-wrap { overflow: hidden; background: #fff; }
         </style>
-        <div id="pb-widget-wrap" style="width:100%;height:320px;overflow:hidden;">
+        <div id="pb-widget-wrap" style="width:100%;height:600px;overflow:hidden;">
           <div class="better-inline-booking-widget" data-url="https://my.practicebetter.io" data-booking-page="" data-hash="6a47d441441138def55e16ab" data-theme="6B8C6E" data-theme-accent="C4957A" style="width:100%;height:100%;" data-scrollbar-visible="false"></div>
         </div>
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
         <script type="text/javascript" src="https://cdn.practicebetter.io/assets/js/booking.widget.js"></script>
-        <script>
-          (function() {
-            var wrap = document.getElementById('pb-widget-wrap');
-            var expanded = false;
-
-            function expand() {
-              if (!expanded) {
-                expanded = true;
-                wrap.style.height = '1000px';
-              }
-            }
-
-            // Listen for postMessage from PB iframe
-            window.addEventListener('message', function(e) {
-              if (!e.data) return;
-              var data = typeof e.data === 'string' ? {} : e.data;
-              if (data.type === 'pb-resize' && data.height) {
-                var h = Math.max(expanded ? 1000 : 320, parseInt(data.height) + 20);
-                wrap.style.height = h + 'px';
-              }
-              if (data.type === 'pb-booking-step') expand();
-            });
-
-            // Click listener on the iframe — detects Book now tap
-            function attachClickListener() {
-              var iframe = wrap.querySelector('iframe');
-              if (!iframe) { setTimeout(attachClickListener, 600); return; }
-              // postMessage approach: PB fires message on interaction
-              // Fallback: expand on any click inside the wrap area
-              wrap.addEventListener('click', function() {
-                setTimeout(expand, 100);
-              });
-            }
-            setTimeout(attachClickListener, 1000);
-          })();
-        </script>
         <!-- Practice Better Booking Widget: end -->
       </div>
 
