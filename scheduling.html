@@ -124,10 +124,10 @@
         <!-- Practice Better Booking Widget: start -->
         <style>
           .better-inline-booking-widget{position:relative;overflow:hidden}
-          .better-inline-booking-widget iframe{position:absolute;top:0;left:0;width:calc(100% + 20px);height:100%;border:none;}
-          #pb-widget-wrap { transition: height 0.3s ease; overflow: hidden; }
+          .better-inline-booking-widget iframe{position:absolute;top:0;left:0;width:100%;height:calc(100% + 20px);border:none;}
+          #pb-widget-wrap { transition: height 0.4s ease; overflow: hidden; }
         </style>
-        <div id="pb-widget-wrap" style="width:100%;height:1000px;overflow:hidden;">
+        <div id="pb-widget-wrap" style="width:100%;height:320px;overflow:hidden;">
           <div class="better-inline-booking-widget" data-url="https://my.practicebetter.io" data-booking-page="" data-hash="6a47d441441138def55e16ab" data-theme="6B8C6E" data-theme-accent="C4957A" style="width:100%;height:100%;" data-scrollbar-visible="false"></div>
         </div>
         <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -135,32 +135,37 @@
         <script>
           (function() {
             var wrap = document.getElementById('pb-widget-wrap');
-            var minH = 1000;
+            var expanded = false;
+
+            function expand() {
+              if (!expanded) {
+                expanded = true;
+                wrap.style.height = '1000px';
+              }
+            }
+
+            // Listen for postMessage from PB iframe
             window.addEventListener('message', function(e) {
               if (!e.data) return;
               var data = typeof e.data === 'string' ? {} : e.data;
-              // Practice Better posts height via postMessage
               if (data.type === 'pb-resize' && data.height) {
-                var h = Math.max(minH, parseInt(data.height) + 20);
+                var h = Math.max(expanded ? 1000 : 320, parseInt(data.height) + 20);
                 wrap.style.height = h + 'px';
               }
-              // Fallback: expand on any booking interaction message
-              if (data.type === 'pb-booking-step') {
-                wrap.style.height = Math.max(wrap.offsetHeight, 860) + 'px';
-              }
+              if (data.type === 'pb-booking-step') expand();
             });
-            // Fallback: poll iframe body height every 500ms
-            function pollHeight() {
+
+            // Click listener on the iframe — detects Book now tap
+            function attachClickListener() {
               var iframe = wrap.querySelector('iframe');
-              if (!iframe) { setTimeout(pollHeight, 500); return; }
-              setInterval(function() {
-                try {
-                  var h = iframe.contentDocument.body.scrollHeight;
-                  if (h && h > minH) wrap.style.height = (h + 20) + 'px';
-                } catch(e) {} // cross-origin will throw — that's fine
-              }, 500);
+              if (!iframe) { setTimeout(attachClickListener, 600); return; }
+              // postMessage approach: PB fires message on interaction
+              // Fallback: expand on any click inside the wrap area
+              wrap.addEventListener('click', function() {
+                setTimeout(expand, 100);
+              });
             }
-            setTimeout(pollHeight, 1500);
+            setTimeout(attachClickListener, 1000);
           })();
         </script>
         <!-- Practice Better Booking Widget: end -->
