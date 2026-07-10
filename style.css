@@ -611,7 +611,7 @@ a { color: inherit; text-decoration: none; }
 .booking-detail-label { font-weight: 600; color: var(--umber-soft); }
 .booking-footnote { font-size: 14px; color: var(--umber-soft); margin: 0; }
 .booking-footnote a { color: var(--terracotta-text); font-weight: 600; }
-.booking-embed { margin-bottom: 1.8em; }
+.booking-embed { margin-bottom: 1.8em; margin-top: -24px; }
 .booking-inner { max-width: 720px; margin: 0 auto; text-align: center; }
 .booking h2 { font-size: 32px; }
 .booking-sub { font-size: 17px; margin-bottom: 2.2em; }
