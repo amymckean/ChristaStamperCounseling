@@ -732,6 +732,7 @@ a:focus-visible, button:focus-visible {
 .page-content h2 {
   font-size: 26px;
   margin-top: 1.8em;
+  scroll-margin-top: 90px;
 }
 .page-content h2:first-child { margin-top: 0; }
 .page-content p { font-size: 16px; line-height: 1.75; }
