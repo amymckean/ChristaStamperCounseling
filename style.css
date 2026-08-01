@@ -67,6 +67,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--terracotta);
   font-weight: 400;
   padding: 0 0.05em;
+  white-space: nowrap;
 }
 .swash {
   position: absolute;
@@ -558,16 +559,33 @@ a { color: inherit; text-decoration: none; }
 .testimonials { background: var(--card); padding: 80px 0 90px; }
 .testimonials h2 { font-size: 32px; margin-bottom: 1.4em; }
 .testimonial-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
   gap: 24px;
-  align-items: start;
+  align-items: stretch;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding-left: 4px;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 4px 22px;
+  margin: -4px -4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--terracotta) transparent;
 }
+.testimonial-grid::-webkit-scrollbar { height: 7px; }
+.testimonial-grid::-webkit-scrollbar-track { background: transparent; }
+.testimonial-grid::-webkit-scrollbar-thumb {
+  background: var(--terracotta);
+  border-radius: 10px;
+}
+.testimonial-grid::-webkit-scrollbar-thumb:hover { background: var(--terracotta-dark); }
 .testimonial-card {
   background: var(--linen);
   border: 1px solid var(--border-soft);
   border-radius: 16px;
   padding: 32px 28px;
+  flex: 0 0 auto;
+  width: clamp(260px, 78vw, 340px);
+  scroll-snap-align: start;
 }
 .testimonial-body {
   font-family: var(--font-display);
@@ -584,9 +602,10 @@ a { color: inherit; text-decoration: none; }
   margin: 0;
   letter-spacing: 0.02em;
 }
-
-@media (max-width: 900px) {
-  .testimonial-grid { grid-template-columns: 1fr; }
+.testimonial-hint {
+  font-size: 13px;
+  color: var(--umber-soft);
+  margin: 0.4em 0 0;
 }
 
 /* booking */
