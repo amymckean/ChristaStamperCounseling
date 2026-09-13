@@ -2,3 +2,5 @@
   for = "/invoice.html"
   [headers.values]
     Basic-Auth = "christa:Stamper$Counsel24!"
+[build]
+  functions = "netlify/functions"
