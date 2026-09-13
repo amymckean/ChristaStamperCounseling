@@ -36,7 +36,6 @@ exports.handler = async (event) => {
 
     const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-    // Create a one-off price for this invoice amount
     const price = await stripe.prices.create({
       currency: "usd",
       unit_amount: Math.round(amount * 100),
@@ -46,16 +45,13 @@ exports.handler = async (event) => {
       },
     });
 
-    // Create payment link with card and ACH bank transfer
     const paymentLink = await stripe.paymentLinks.create({
       line_items: [{ price: price.id, quantity: 1 }],
-      payment_method_types: ["card", "us_bank_account"],
       metadata: { invoice_number: invoiceNumber || "" },
       after_completion: {
         type: "hosted_confirmation",
         hosted_confirmation: {
-          custom_message:
-            "Thank you for your payment. Christa Stamper will confirm receipt shortly.",
+          custom_message: "Thank you for your payment. Christa Stamper will confirm receipt shortly.",
         },
       },
     });
