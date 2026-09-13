@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Invoice Generator — Christa Stamper</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>* { box-sizing: border-box; margin: 0; padding: 0; }</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ─── EmailJS config ───────────────────────────────────────────────────────────
+// After signing up at emailjs.com, replace these three values:
+const EMAILJS_PUBLIC_KEY  = "yIH65r3saEnNRMUWs";   // Account → API Keys
+const EMAILJS_SERVICE_ID  = "service_n8ttajd";   // Email Services → Service ID
+const EMAILJS_TEMPLATE_ID = "template_dwm5utq";  // Email Templates → Template ID
+// ─────────────────────────────────────────────────────────────────────────────
+
+const BRAND = {
+  linen: "#FAF6F0", card: "#FFFFFF", terracotta: "#A8623F",
+  terracottaText: "#854A30", olive: "#6B7456", umber: "#3D352C",
+  umberSoft: "#6B6258", gold: "#C9905C", border: "rgba(61,53,44,0.12)",
+};
+const PROVIDER = {
+  name: "Christa Stamper", title: "Biblical Counselor",
+  email: "christa@christastamper.com", website: "christastamper.com",
+};
+
+function fmt$(val) {
+  const n = parseFloat(val);
+  if (isNaN(n)) return "$0.00";
+  return "$" + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+function fmtDate(s) {
+  if (!s) return "";
+  return new Date(s + "T00:00:00").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+function today() { return new Date().toISOString().split("T")[0]; }
+function dueIn(days) { const d = new Date(); d.setDate(d.getDate() + days); return d.toISOString().split("T")[0]; }
+function newInvNum() {
+  const n = new Date();
+  return `INV-${n.getFullYear().toString().slice(-2)}${String(n.getMonth()+1).padStart(2,"0")}-${String(Math.floor(Math.random()*900)+100)}`;
+}
+
+function buildInvoiceText(data) {
+  const { invoiceNumber, issueDate, dueDate, church, contactName, lines, notes, total } = data;
+  let rows = lines.map(l => `  ${l.description.padEnd(35)} ${String(l.sessions).padStart(4)} x ${fmt$(l.rate).padStart(8)} = ${fmt$(l.amount).padStart(9)}`).join("\n");
+  return `Invoice ${invoiceNumber}
+Issued: ${fmtDate(issueDate)}   Due: ${fmtDate(dueDate)}
+
+Bill to: ${church}${contactName ? " — " + contactName : ""}
+
+Services:
+${rows}
+
+Total due: ${fmt$(total)}
+
+${notes}
+
+Questions? Reply to this email or visit ${PROVIDER.website}`;
+}
+
+function App() {
+  const [church, setChurch]           = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [invoiceNumber]               = useState(newInvNum);
+  const [issueDate]                   = useState(today);
+  const [dueDate, setDueDate]         = useState(dueIn(30));
+  const [lines, setLines]             = useState([{ description: "Biblical counseling session", sessions: "1", rate: "100", amount: "100.00" }]);
+  const [notes, setNotes]             = useState("Thank you for your partnership in caring for those in your congregation. Payment may be made by card via the link below, or by check payable to Christa Stamper.");
+  const [tab, setTab]                 = useState("edit"); // edit | preview | settings
+  const [sendState, setSendState]     = useState("idle"); // idle | sending | sent | error
+  const [sendError, setSendError]     = useState("");
+  const [stripeLink, setStripeLink]   = useState("");
+  const [stripeState, setStripeState] = useState("idle"); // idle | loading | done | error
+  const [ejsKey, setEjsKey]           = useState(EMAILJS_PUBLIC_KEY);
+  const [ejsSvc, setEjsSvc]           = useState(EMAILJS_SERVICE_ID);
+  const [ejsTpl, setEjsTpl]           = useState(EMAILJS_TEMPLATE_ID);
+
+  const total = lines.reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
+
+  function updateLine(i, field, val) {
+    setLines(prev => {
+      const next = prev.map((l, idx) => idx === i ? { ...l, [field]: val } : l);
+      if (field === "sessions" || field === "rate") {
+        const s = parseFloat(next[i].sessions) || 0;
+        const r = parseFloat(next[i].rate) || 0;
+        next[i].amount = (s * r).toFixed(2);
+      }
+      return next;
+    });
+  }
+
+  async function generateStripeLink() {
+    if (!total || total <= 0) { alert("Please add at least one line item with an amount."); return; }
+    setStripeState("loading");
+    try {
+      const res = await fetch("/.netlify/functions/create-payment-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: total,
+          description: `Invoice ${invoiceNumber} — ${church || "Counseling Services"}`,
+          invoiceNumber,
+        }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        setStripeLink(data.url);
+        setStripeState("done");
+      } else {
+        throw new Error(data.error || "No URL returned");
+      }
+    } catch (err) {
+      setStripeState("error");
+      alert("Failed to generate payment link: " + err.message);
+    }
+  }
+
+  async function sendInvoice() {
+    if (!contactEmail) { setSendError("Please enter the church contact email."); return; }
+    if (ejsKey === "YOUR_PUBLIC_KEY") { setSendError("EmailJS not configured yet — go to Settings to add your keys."); return; }
+
+    setSendState("sending");
+    setSendError("");
+
+    const invoiceText = buildInvoiceText({ invoiceNumber, issueDate, dueDate, church, contactName, lines, notes, total });
+
+    // Build plain text line items — one variable per line, up to 10
+    const lineParams = {};
+    for (let i = 0; i < 10; i++) {
+      const l = lines[i];
+      lineParams[`line_${i+1}_desc`]    = l ? l.description : "";
+      lineParams[`line_${i+1}_sessions`]= l ? l.sessions : "";
+      lineParams[`line_${i+1}_rate`]    = l ? fmt$(l.rate) : "";
+      lineParams[`line_${i+1}_amount`]  = l ? fmt$(l.amount) : "";
+      lineParams[`line_${i+1}_style`]   = l ? "padding:12px 0;font-size:14px;font-family:Arial,sans-serif;border-bottom:1px solid rgba(61,53,44,0.08);" : "padding:0;font-size:0;line-height:0;border:none;";
+    }
+
+    const templateParams = {
+      to_email:        contactEmail,
+      to_name:         contactName || church,
+      church_name:     church,
+      invoice_number:  invoiceNumber,
+      issue_date:      fmtDate(issueDate),
+      due_date:        fmtDate(dueDate),
+      total_due:       fmt$(total),
+      notes:           notes,
+      stripe_link:     stripeLink || "(Payment link — paste here after creating in Stripe)",
+      provider_name:   PROVIDER.name,
+      provider_email:  PROVIDER.email,
+      provider_website: PROVIDER.website,
+      invoice_text:    invoiceText,
+      ...lineParams,
+    };
+
+    try {
+      await emailjs.send(ejsSvc, ejsTpl, templateParams, ejsKey);
+      setSendState("sent");
+      setTimeout(() => setSendState("idle"), 4000);
+    } catch (err) {
+      setSendState("error");
+      setSendError(err?.text || "Failed to send. Check your EmailJS keys in Settings.");
+    }
+  }
+
+  const input = (extra = {}) => ({
+    style: { width: "100%", padding: "9px 12px", border: `1px solid ${BRAND.border}`, borderRadius: 8, fontSize: 14, fontFamily: "Inter, sans-serif", color: BRAND.umber, background: BRAND.card, outline: "none", ...extra.style },
+    ...extra,
+  });
+  const label = (text) => <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: BRAND.umberSoft, marginBottom: 5 }}>{text}</label>;
+  const section = (children, extra = {}) => (
+    <div style={{ background: BRAND.card, border: `1px solid ${BRAND.border}`, borderRadius: 12, padding: "24px 28px", marginBottom: 16, ...extra }}>{children}</div>
+  );
+  const sh = (text) => <p style={{ fontFamily: "Playfair Display, serif", fontSize: 15, fontWeight: 600, margin: "0 0 16px", color: BRAND.umber }}>{text}</p>;
+
+  const configured = ejsKey !== "YOUR_PUBLIC_KEY" && ejsSvc !== "YOUR_SERVICE_ID" && ejsTpl !== "YOUR_TEMPLATE_ID";
+
+  return (
+    <div style={{ minHeight: "100vh", background: BRAND.linen, fontFamily: "Inter, sans-serif", color: BRAND.umber }}>
+      <style>{`
+        input:focus, textarea:focus, select:focus { outline: 2px solid ${BRAND.terracotta}; outline-offset: 1px; }
+        input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+        @media print { .no-print { display: none !important; } body { background: white; } .invoice-card { box-shadow: none !important; border: none !important; } }
+        .btn { border: none; border-radius: 100px; font-size: 14px; font-weight: 600; font-family: Inter, sans-serif; cursor: pointer; padding: 11px 22px; transition: background 0.15s, color 0.15s, border-color 0.15s; }
+        .btn-primary { background: ${BRAND.terracotta}; color: white; }
+        .btn-primary:hover { background: ${BRAND.terracottaText}; }
+        .btn-olive { background: ${BRAND.olive}; color: white; }
+        .btn-olive:hover { background: #565E44; }
+        .btn-ghost { background: transparent; color: ${BRAND.umberSoft}; border: 1px solid ${BRAND.border}; }
+        .btn-ghost:hover { border-color: ${BRAND.terracotta}; color: ${BRAND.terracottaText}; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .line-input { padding: 8px 10px; border: 1px solid ${BRAND.border}; border-radius: 7px; font-size: 14px; font-family: Inter, sans-serif; color: ${BRAND.umber}; background: ${BRAND.card}; width: 100%; }
+        .tab-pill { padding: 7px 16px; border-radius: 100px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; font-family: Inter, sans-serif; transition: background 0.15s, color 0.15s; }
+        .tab-on { background: ${BRAND.umber}; color: white; }
+        .tab-off { background: transparent; color: ${BRAND.umberSoft}; }
+        .tab-off:hover { background: rgba(61,53,44,0.06); }
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+        .badge-ok { background: #e8f5e9; color: #2e7d32; }
+        .badge-warn { background: #fff3e0; color: #e65100; }
+      `}</style>
+
+      {/* Header */}
+      <div className="no-print" style={{ background: BRAND.card, borderBottom: `1px solid ${BRAND.border}`, padding: "0 32px" }}>
+        <div style={{ maxWidth: 1020, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ width: 28, height: 28, background: BRAND.olive, borderRadius: "22%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg viewBox="0 0 110 70" width="16" height="10"><path d="M5 65 L35 20 L50 40 L70 10 L105 65" fill="none" stroke="#FAF6F0" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <span style={{ fontFamily: "Playfair Display, serif", fontWeight: 600, fontSize: 16 }}>Christa Stamper</span>
+            <span style={{ color: BRAND.border, fontSize: 16, margin: "0 2px" }}>·</span>
+            <span style={{ fontSize: 13, color: BRAND.umberSoft, fontWeight: 500 }}>Invoice Generator</span>
+          </div>
+          <div style={{ display: "flex", gap: 6 }}>
+            {[["edit","Edit"],["preview","Preview"],["settings","Settings"]].map(([id, label]) => (
+              <button key={id} className={`tab-pill ${tab === id ? "tab-on" : "tab-off"}`} onClick={() => setTab(id)}>
+                {label}
+                {id === "settings" && !configured && <span style={{ marginLeft: 5 }}>⚠️</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Settings tab */}
+      {tab === "settings" && (
+        <div className="no-print" style={{ maxWidth: 600, margin: "40px auto", padding: "0 24px" }}>
+          {section(<>
+            {sh("EmailJS configuration")}
+            <p style={{ fontSize: 13, color: BRAND.umberSoft, lineHeight: 1.6, marginBottom: 20 }}>
+              Sign up free at <a href="https://emailjs.com" target="_blank" rel="noopener" style={{ color: BRAND.terracottaText, fontWeight: 600 }}>emailjs.com</a>, connect your Gmail, create a template, then paste your keys below. See the setup guide beneath these fields.
+            </p>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div>
+                {label("Public key (Account → API Keys)")}
+                <input {...input()} value={ejsKey} onChange={e => setEjsKey(e.target.value)} placeholder="user_XXXXXXXXXXXX" />
+              </div>
+              <div>
+                {label("Service ID (Email Services → your Gmail service)")}
+                <input {...input()} value={ejsSvc} onChange={e => setEjsSvc(e.target.value)} placeholder="service_XXXXXXX" />
+              </div>
+              <div>
+                {label("Template ID (Email Templates → your invoice template)")}
+                <input {...input()} value={ejsTpl} onChange={e => setEjsTpl(e.target.value)} placeholder="template_XXXXXXX" />
+              </div>
+            </div>
+            <div style={{ marginTop: 16, padding: "12px 16px", background: BRAND.linen, borderRadius: 10 }}>
+              <span className={`badge ${configured ? "badge-ok" : "badge-warn"}`}>{configured ? "✓ Configured" : "Not yet configured"}</span>
+              {configured && <span style={{ fontSize: 13, color: BRAND.umberSoft, marginLeft: 10 }}>Ready to send invoices.</span>}
+            </div>
+          </>)}
+
+          {section(<>
+            {sh("EmailJS template setup")}
+            <p style={{ fontSize: 13, color: BRAND.umberSoft, lineHeight: 1.6, marginBottom: 12 }}>In EmailJS, create a new template with these variable names. The app fills them in automatically when sending:</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              {[
+                ["{{to_name}}", "Church contact name"],
+                ["{{to_email}}", "Sent to this address"],
+                ["{{church_name}}", "Church / org name"],
+                ["{{invoice_number}}", "e.g. INV-2607-042"],
+                ["{{issue_date}}", "Date invoice was created"],
+                ["{{due_date}}", "Payment due date"],
+                ["{{total_due}}", "e.g. $200.00"],
+                ["{{notes}}", "Notes to the church"],
+                ["{{stripe_link}}", "Payment link URL"],
+                ["{{line_items_html}}", "HTML table of services"],
+                ["{{provider_name}}", "Christa Stamper"],
+                ["{{provider_email}}", "christa@christastamper.com"],
+              ].map(([v, d]) => (
+                <div key={v} style={{ background: BRAND.card, border: `1px solid ${BRAND.border}`, borderRadius: 8, padding: "8px 12px" }}>
+                  <p style={{ margin: 0, fontFamily: "monospace", fontSize: 12, color: BRAND.terracottaText }}>{v}</p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: BRAND.umberSoft }}>{d}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 13, color: BRAND.umberSoft, lineHeight: 1.6, marginTop: 14 }}>
+              In your template's <strong>To Email</strong> field, put <code style={{ background: BRAND.linen, padding: "1px 5px", borderRadius: 4 }}>{"{{to_email}}"}</code>. Set the <strong>From Name</strong> to <code style={{ background: BRAND.linen, padding: "1px 5px", borderRadius: 4 }}>Christa Stamper</code>.
+            </p>
+          </>)}
+        </div>
+      )}
+
+      {/* Edit + Preview */}
+      {tab !== "settings" && (
+        <div style={{ maxWidth: 1020, margin: "0 auto", padding: "28px 24px", display: "grid", gridTemplateColumns: tab === "preview" ? "1fr" : "1fr 1fr", gap: 24 }}>
+
+          {/* Edit form */}
+          {tab === "edit" && (
+            <div className="no-print">
+              {section(<>
+                {sh("Bill to")}
+                <div style={{ display: "grid", gap: 12 }}>
+                  <div>
+                    {label("Church / organization name")}
+                    <input {...input()} value={church} onChange={e => setChurch(e.target.value)} placeholder="Grace Community Church" />
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                    <div>
+                      {label("Contact name")}
+                      <input {...input()} value={contactName} onChange={e => setContactName(e.target.value)} placeholder="Treasurer or admin" />
+                    </div>
+                    <div>
+                      {label("Contact email")}
+                      <input {...input()} type="email" value={contactEmail} onChange={e => setContactEmail(e.target.value)} placeholder="admin@church.org" />
+                    </div>
+                  </div>
+                </div>
+              </>)}
+
+              {section(<>
+                {sh("Invoice details")}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    {label("Invoice number")}
+                    <input {...input({ style: { background: BRAND.linen, color: BRAND.umberSoft } })} value={invoiceNumber} readOnly />
+                  </div>
+                  <div>
+                    {label("Due date")}
+                    <input {...input()} type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                  </div>
+                </div>
+              </>)}
+
+              {section(<>
+                {sh("Services")}
+                <div style={{ display: "grid", gridTemplateColumns: "3fr 70px 80px 80px 28px", gap: 8, marginBottom: 8 }}>
+                  {["Description","Sessions","Rate","Amount",""].map((h,i) => (
+                    <span key={i} style={{ fontSize: 11, fontWeight: 600, color: BRAND.umberSoft, textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</span>
+                  ))}
+                </div>
+                {lines.map((line, i) => (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "3fr 70px 80px 80px 28px", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                    <input className="line-input" value={line.description} onChange={e => updateLine(i,"description",e.target.value)} placeholder="Counseling session" />
+                    <input className="line-input" type="number" min="1" value={line.sessions} onChange={e => updateLine(i,"sessions",e.target.value)} style={{ textAlign: "center" }} />
+                    <input className="line-input" type="number" min="0" step="0.01" value={line.rate} onChange={e => updateLine(i,"rate",e.target.value)} />
+                    <input className="line-input" value={line.amount} onChange={e => updateLine(i,"amount",e.target.value)} style={{ color: BRAND.terracottaText, fontWeight: 600 }} />
+                    {lines.length > 1
+                      ? <button onClick={() => setLines(p => p.filter((_,idx) => idx !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: BRAND.umberSoft, fontSize: 18, padding: 0 }}>×</button>
+                      : <span />}
+                  </div>
+                ))}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, paddingTop: 12, borderTop: `1px solid ${BRAND.border}` }}>
+                  <button className="btn btn-ghost" style={{ padding: "7px 14px", fontSize: 13 }} onClick={() => setLines(p => [...p, { description: "", sessions: "", rate: "", amount: "" }])}>+ Add line</button>
+                  <div>
+                    <span style={{ fontSize: 12, color: BRAND.umberSoft, marginRight: 10 }}>Total</span>
+                    <span style={{ fontFamily: "Playfair Display, serif", fontSize: 22, fontWeight: 600 }}>{fmt$(total)}</span>
+                  </div>
+                </div>
+              </>)}
+
+              {section(<>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                  {label("Payment link")}
+                  <button className="btn btn-ghost" onClick={generateStripeLink} disabled={stripeState === "loading"} style={{ padding: "6px 14px", fontSize: 13 }}>
+                    {stripeState === "loading" ? "Generating…" : stripeState === "done" ? "↺ Regenerate" : "Generate from Stripe"}
+                  </button>
+                </div>
+                {stripeLink
+                  ? <div style={{ background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: BRAND.terracottaText, wordBreak: "break-all" }}>✓ {stripeLink}</div>
+                  : <div style={{ background: BRAND.linen, border: `1px solid ${BRAND.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: BRAND.umberSoft }}>Click "Generate from Stripe" to create a payment link automatically.</div>
+                }
+              </>)}
+
+              {section(<>
+                {label("Notes to church")}
+                <textarea {...input({ style: { minHeight: 80, resize: "vertical", lineHeight: 1.6 } })} value={notes} onChange={e => setNotes(e.target.value)} />
+              </>)}
+
+              {sendError && (
+                <div style={{ background: "#fff3e0", border: "1px solid #ffcc80", borderRadius: 10, padding: "12px 16px", marginBottom: 14 }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#b71c1c" }}>{sendError}</p>
+                </div>
+              )}
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button className="btn btn-olive" onClick={sendInvoice} disabled={sendState === "sending"}>
+                  {sendState === "sending" ? "Sending…" : sendState === "sent" ? "✓ Sent!" : "Send invoice by email"}
+                </button>
+                <button className="btn btn-primary" onClick={() => setTab("preview")}>Preview</button>
+                <button className="btn btn-ghost" onClick={generateStripeLink} disabled={stripeState === "loading"}>{stripeState === "loading" ? "Generating…" : stripeState === "done" ? "✓ Payment link ready" : "Generate payment link"}</button>
+              </div>
+
+              {!configured && (
+                <p style={{ fontSize: 12, color: BRAND.umberSoft, marginTop: 10 }}>
+                  ⚠️ EmailJS not configured — <button onClick={() => setTab("settings")} style={{ background: "none", border: "none", color: BRAND.terracottaText, fontWeight: 600, cursor: "pointer", fontSize: 12, padding: 0 }}>go to Settings</button> to add your keys.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Invoice preview */}
+          <div>
+            <div className="invoice-card" style={{ background: BRAND.card, border: `1px solid ${BRAND.border}`, borderRadius: 14, overflow: "hidden", boxShadow: "0 4px 24px rgba(61,53,44,0.07)" }}>
+              {/* Olive header */}
+              <div style={{ background: BRAND.olive, padding: "28px 36px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 36, height: 36, background: "rgba(250,246,240,0.15)", borderRadius: "22%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <svg viewBox="0 0 110 70" width="20" height="13"><path d="M5 65 L35 20 L50 40 L70 10 L105 65" fill="none" stroke="#FAF6F0" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontFamily: "Playfair Display, serif", fontWeight: 600, fontSize: 17, color: "#FAF6F0" }}>{PROVIDER.name}</p>
+                    <p style={{ margin: 0, fontSize: 12, color: "rgba(250,246,240,0.7)" }}>{PROVIDER.title}</p>
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <p style={{ margin: 0, fontSize: 11, color: "rgba(250,246,240,0.7)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Invoice</p>
+                  <p style={{ margin: 0, fontFamily: "Playfair Display, serif", fontSize: 15, fontWeight: 600, color: "#FAF6F0" }}>{invoiceNumber}</p>
+                </div>
+              </div>
+
+              <div style={{ padding: "28px 36px" }}>
+                {/* Meta row */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 24, marginBottom: 28, paddingBottom: 24, borderBottom: `1px solid ${BRAND.border}` }}>
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: BRAND.umberSoft, textTransform: "uppercase", letterSpacing: "0.06em" }}>Bill to</p>
+                    <p style={{ margin: 0, fontWeight: 600, fontSize: 14 }}>{church || "Church name"}</p>
+                    {contactName && <p style={{ margin: "2px 0 0", fontSize: 13, color: BRAND.umberSoft }}>{contactName}</p>}
+                    {contactEmail && <p style={{ margin: "2px 0 0", fontSize: 13, color: BRAND.terracottaText }}>{contactEmail}</p>}
+                  </div>
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: BRAND.umberSoft, textTransform: "uppercase", letterSpacing: "0.06em" }}>Date issued</p>
+                    <p style={{ margin: 0, fontSize: 14 }}>{fmtDate(issueDate)}</p>
+                  </div>
+                  <div>
+                    <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 600, color: BRAND.umberSoft, textTransform: "uppercase", letterSpacing: "0.06em" }}>Due date</p>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{fmtDate(dueDate)}</p>
+                  </div>
+                </div>
+
+                {/* Line items */}
+                <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 20 }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${BRAND.border}` }}>
+                      {["Description","Sessions","Rate","Amount"].map((h,i) => (
+                        <th key={i} style={{ padding: "0 0 8px", textAlign: i===0?"left":"right", fontSize: 11, fontWeight: 600, color: BRAND.umberSoft, textTransform: "uppercase", letterSpacing: "0.06em" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lines.map((line, i) => (
+                      <tr key={i} style={{ borderBottom: `1px solid ${BRAND.border}` }}>
+                        <td style={{ padding: "12px 0", fontSize: 14 }}>{line.description || "—"}</td>
+                        <td style={{ padding: "12px 0", fontSize: 14, color: BRAND.umberSoft, textAlign: "right" }}>{line.sessions}</td>
+                        <td style={{ padding: "12px 0", fontSize: 14, color: BRAND.umberSoft, textAlign: "right" }}>{fmt$(line.rate)}</td>
+                        <td style={{ padding: "12px 0", fontSize: 14, fontWeight: 600, textAlign: "right" }}>{fmt$(line.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                {/* Total */}
+                <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 24 }}>
+                  <div style={{ background: BRAND.linen, borderRadius: 10, padding: "14px 20px", minWidth: 180, textAlign: "right" }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: BRAND.umberSoft, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total due</p>
+                    <p style={{ margin: 0, fontFamily: "Playfair Display, serif", fontSize: 26, fontWeight: 600 }}>{fmt$(total)}</p>
+                  </div>
+                </div>
+
+                {/* Stripe link */}
+                {stripeLink && (
+                  <div style={{ background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 10, padding: "14px 18px", marginBottom: 16 }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#2e7d32", textTransform: "uppercase", letterSpacing: "0.06em" }}>Pay online</p>
+                    <a href={stripeLink} style={{ fontSize: 13, color: BRAND.terracottaText, wordBreak: "break-all" }}>{stripeLink}</a>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {notes && (
+                  <div style={{ background: BRAND.linen, borderRadius: 10, padding: "14px 18px", marginBottom: 20 }}>
+                    <p style={{ margin: 0, fontSize: 13, color: BRAND.umberSoft, lineHeight: 1.6 }}>{notes}</p>
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div style={{ borderTop: `1px solid ${BRAND.border}`, paddingTop: 16, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <p style={{ margin: 0, fontSize: 12, color: BRAND.umberSoft }}>{PROVIDER.email}</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: BRAND.umberSoft }}>{PROVIDER.website}</p>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 11, color: BRAND.umberSoft, opacity: 0.4 }}>Thank you for your partnership.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Preview actions */}
+            {tab === "preview" && (
+              <div className="no-print" style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "center", flexWrap: "wrap" }}>
+                <button className="btn btn-olive" onClick={sendInvoice} disabled={sendState === "sending"}>
+                  {sendState === "sending" ? "Sending…" : sendState === "sent" ? "✓ Sent!" : "Send by email"}
+                </button>
+                <button className="btn btn-primary" onClick={() => window.print()}>Download PDF</button>
+                <button className="btn btn-ghost" onClick={generateStripeLink} disabled={stripeState === "loading"}>{stripeState === "loading" ? "Generating…" : stripeState === "done" ? "✓ Payment link ready" : "Generate payment link"}</button>
+                <button className="btn btn-ghost" onClick={() => setTab("edit")}>Edit</button>
+              </div>
+            )}
+            {sendError && tab === "preview" && (
+              <p style={{ textAlign: "center", fontSize: 13, color: "#b71c1c", marginTop: 10 }}>{sendError}</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
