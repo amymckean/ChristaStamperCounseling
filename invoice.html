@@ -50,7 +50,7 @@ function newInvNum() {
 }
 
 function buildInvoiceText(data) {
-  const { invoiceNumber, issueDate, dueDate, church, contactName, lines, notes, total } = data;
+  const { invoiceNumber, issueDate, dueDate, church, contactName, lines, notes, subtotal, cardFee, cardTotal, achTotal } = data;
   let rows = lines.map(l => `  ${l.description.padEnd(35)} ${String(l.sessions).padStart(4)} x ${fmt$(l.rate).padStart(8)} = ${fmt$(l.amount).padStart(9)}`).join("\n");
   return `Invoice ${invoiceNumber}
 Issued: ${fmtDate(issueDate)}   Due: ${fmtDate(dueDate)}
@@ -60,7 +60,10 @@ Bill to: ${church}${contactName ? " — " + contactName : ""}
 Services:
 ${rows}
 
-Total due: ${fmt$(total)}
+Amount due: ${fmt$(subtotal)}
+
+  Paying by card:            ${fmt$(cardTotal)}  (includes ${fmt$(cardFee)} processing fee)
+  Paying by bank transfer:   ${fmt$(achTotal)}  (no fee)
 
 ${notes}
 
@@ -75,17 +78,29 @@ function App() {
   const [issueDate]                   = useState(today);
   const [dueDate, setDueDate]         = useState(dueIn(30));
   const [lines, setLines]             = useState([{ description: "Biblical counseling session", sessions: "1", rate: "100", amount: "100.00" }]);
-  const [notes, setNotes]             = useState("Thank you for your partnership in caring for those in your congregation. Payment may be made by card via the link below, or by check payable to Christa Stamper.");
+  const [notes, setNotes]             = useState("Thank you for your partnership in caring for those in your community. Payment may be made by card via the link below.");
   const [tab, setTab]                 = useState("edit"); // edit | preview | settings
   const [sendState, setSendState]     = useState("idle"); // idle | sending | sent | error
   const [sendError, setSendError]     = useState("");
-  const [stripeLink, setStripeLink]   = useState("");
-  const [stripeState, setStripeState] = useState("idle"); // idle | loading | done | error
+  const [cardLink, setCardLink]           = useState("");
+  const [cardLinkState, setCardLinkState] = useState("idle"); // idle | loading | done | error
+  const [bankLink, setBankLink]           = useState("");
+  const [bankLinkState, setBankLinkState] = useState("idle"); // idle | loading | done | error
   const [ejsKey, setEjsKey]           = useState(EMAILJS_PUBLIC_KEY);
   const [ejsSvc, setEjsSvc]           = useState(EMAILJS_SERVICE_ID);
   const [ejsTpl, setEjsTpl]           = useState(EMAILJS_TEMPLATE_ID);
 
-  const total = lines.reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
+  const CARD_FEE_PCT  = 0.029; // Stripe's card rate: 2.9% + $0.30
+  const CARD_FEE_FLAT = 0.30;
+
+  const subtotal = lines.reduce((sum, l) => sum + (parseFloat(l.amount) || 0), 0);
+  // Grossed up so the net received after Stripe's cut still equals the subtotal.
+  const cardFee = subtotal > 0
+    ? Math.round((((subtotal + CARD_FEE_FLAT) / (1 - CARD_FEE_PCT)) - subtotal) * 100) / 100
+    : 0;
+  const cardTotal = subtotal + cardFee;   // what they'd pay choosing card
+  const achTotal   = subtotal;            // what they'd pay choosing bank transfer (no fee)
+  const total = subtotal;                 // the invoice's base amount, before either payment path
 
   function updateLine(i, field, val) {
     setLines(prev => {
@@ -99,28 +114,32 @@ function App() {
     });
   }
 
-  async function generateStripeLink() {
-    if (!total || total <= 0) { alert("Please add at least one line item with an amount."); return; }
-    setStripeState("loading");
+  async function generatePaymentLink(method) {
+    if (!subtotal || subtotal <= 0) { alert("Please add at least one line item with an amount."); return; }
+    const amount = method === "bank" ? achTotal : cardTotal;
+    const setLink  = method === "bank" ? setBankLink : setCardLink;
+    const setState = method === "bank" ? setBankLinkState : setCardLinkState;
+    setState("loading");
     try {
       const res = await fetch("/.netlify/functions/create-payment-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: total,
+          amount,
+          method,
           description: `Invoice ${invoiceNumber} — ${church || "Counseling Services"}`,
           invoiceNumber,
         }),
       });
       const data = await res.json();
       if (data.url) {
-        setStripeLink(data.url);
-        setStripeState("done");
+        setLink(data.url);
+        setState("done");
       } else {
         throw new Error(data.error || "No URL returned");
       }
     } catch (err) {
-      setStripeState("error");
+      setState("error");
       alert("Failed to generate payment link: " + err.message);
     }
   }
@@ -132,7 +151,7 @@ function App() {
     setSendState("sending");
     setSendError("");
 
-    const invoiceText = buildInvoiceText({ invoiceNumber, issueDate, dueDate, church, contactName, lines, notes, total });
+    const invoiceText = buildInvoiceText({ invoiceNumber, issueDate, dueDate, church, contactName, lines, notes, subtotal, cardFee, cardTotal, achTotal });
 
     // Build plain text line items — one variable per line, up to 10
     const lineParams = {};
@@ -152,9 +171,14 @@ function App() {
       invoice_number:  invoiceNumber,
       issue_date:      fmtDate(issueDate),
       due_date:        fmtDate(dueDate),
-      total_due:       fmt$(total),
+      amount_due:      fmt$(subtotal),
+      card_total:      fmt$(cardTotal),
+      card_fee:        fmt$(cardFee),
+      ach_total:       fmt$(achTotal),
+      total_due:       fmt$(subtotal),
       notes:           notes,
-      stripe_link:     stripeLink || "(Payment link — paste here after creating in Stripe)",
+      card_link:       cardLink || "(Card payment link — generate in the app before sending)",
+      bank_link:       bankLink || "(Bank transfer link — generate in the app before sending)",
       provider_name:   PROVIDER.name,
       provider_email:  PROVIDER.email,
       provider_website: PROVIDER.website,
@@ -173,8 +197,8 @@ function App() {
   }
 
   const input = (extra = {}) => ({
-    style: { width: "100%", padding: "9px 12px", border: `1px solid ${BRAND.border}`, borderRadius: 8, fontSize: 14, fontFamily: "Inter, sans-serif", color: BRAND.umber, background: BRAND.card, outline: "none", ...extra.style },
     ...extra,
+    style: { width: "100%", padding: "9px 12px", border: `1px solid ${BRAND.border}`, borderRadius: 8, fontSize: 14, fontFamily: "Inter, sans-serif", color: BRAND.umber, background: BRAND.card, outline: "none", ...extra.style },
   });
   const label = (text) => <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: BRAND.umberSoft, marginBottom: 5 }}>{text}</label>;
   const section = (children, extra = {}) => (
@@ -206,6 +230,7 @@ function App() {
         .badge { display: inline-block; padding: 2px 8px; border-radius: 100px; font-size: 11px; font-weight: 600; }
         .badge-ok { background: #e8f5e9; color: #2e7d32; }
         .badge-warn { background: #fff3e0; color: #e65100; }
+        @media (max-width: 760px) { .edit-grid { grid-template-columns: 1fr !important; } }
       `}</style>
 
       {/* Header */}
@@ -269,9 +294,14 @@ function App() {
                 ["{{invoice_number}}", "e.g. INV-2607-042"],
                 ["{{issue_date}}", "Date invoice was created"],
                 ["{{due_date}}", "Payment due date"],
-                ["{{total_due}}", "e.g. $200.00"],
+                ["{{amount_due}}", "Base amount, before any card fee"],
+                ["{{card_total}}", "Total if paying by card (fee included)"],
+                ["{{card_fee}}", "Card processing fee amount"],
+                ["{{ach_total}}", "Total if paying by bank transfer (no fee)"],
+                ["{{total_due}}", "Same as amount_due — kept for older templates"],
                 ["{{notes}}", "Notes to the church"],
-                ["{{stripe_link}}", "Payment link URL"],
+                ["{{card_link}}", "Card payment link URL"],
+                ["{{bank_link}}", "Bank transfer (ACH) payment link URL"],
                 ["{{line_items_html}}", "HTML table of services"],
                 ["{{provider_name}}", "Christa Stamper"],
                 ["{{provider_email}}", "christa@christastamper.com"],
@@ -291,7 +321,7 @@ function App() {
 
       {/* Edit + Preview */}
       {tab !== "settings" && (
-        <div style={{ maxWidth: 1020, margin: "0 auto", padding: "28px 24px", display: "grid", gridTemplateColumns: tab === "preview" ? "1fr" : "1fr 1fr", gap: 24 }}>
+        <div className="edit-grid" style={{ maxWidth: 1020, margin: "0 auto", padding: "28px 24px", display: "grid", gridTemplateColumns: tab === "preview" ? "1fr" : "3fr 2fr", gap: 24 }}>
 
           {/* Edit form */}
           {tab === "edit" && (
@@ -351,28 +381,52 @@ function App() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12, paddingTop: 12, borderTop: `1px solid ${BRAND.border}` }}>
                   <button className="btn btn-ghost" style={{ padding: "7px 14px", fontSize: 13 }} onClick={() => setLines(p => [...p, { description: "", sessions: "", rate: "", amount: "" }])}>+ Add line</button>
                   <div>
-                    <span style={{ fontSize: 12, color: BRAND.umberSoft, marginRight: 10 }}>Total</span>
-                    <span style={{ fontFamily: "Playfair Display, serif", fontSize: 22, fontWeight: 600 }}>{fmt$(total)}</span>
+                    <span style={{ fontSize: 12, color: BRAND.umberSoft, marginRight: 10 }}>Amount due</span>
+                    <span style={{ fontFamily: "Playfair Display, serif", fontSize: 22, fontWeight: 600 }}>{fmt$(subtotal)}</span>
                   </div>
                 </div>
               </>)}
 
               {section(<>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                  {label("Payment link")}
-                  <button className="btn btn-ghost" onClick={generateStripeLink} disabled={stripeState === "loading"} style={{ padding: "6px 14px", fontSize: 13 }}>
-                    {stripeState === "loading" ? "Generating…" : stripeState === "done" ? "↺ Regenerate" : "Generate from Stripe"}
-                  </button>
+                {sh("Payment options")}
+                <p style={{ fontSize: 12, color: BRAND.umberSoft, marginBottom: 12 }}>Shown to the church on the invoice — generate a Stripe link for either or both. The price depends on how they choose to pay.</p>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <div style={{ padding: "12px 14px", borderRadius: 8, border: `1px solid ${BRAND.border}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: BRAND.umber }}>Card</div>
+                        <div style={{ fontSize: 12, color: BRAND.umberSoft, marginTop: 2 }}>Includes {fmt$(cardFee)} processing fee (2.9% + $0.30)</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: BRAND.umber, whiteSpace: "nowrap" }}>{fmt$(cardTotal)}</div>
+                        <button className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => generatePaymentLink("card")} disabled={cardLinkState === "loading"}>
+                          {cardLinkState === "loading" ? "Generating…" : cardLinkState === "done" ? "↺ Regenerate" : "Generate link"}
+                        </button>
+                      </div>
+                    </div>
+                    {cardLink && <div style={{ marginTop: 8, background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: BRAND.terracottaText, wordBreak: "break-all" }}>✓ {cardLink}</div>}
+                  </div>
+                  <div style={{ padding: "12px 14px", borderRadius: 8, border: `1px solid ${BRAND.border}` }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: BRAND.umber }}>Bank transfer (ACH)</div>
+                        <div style={{ fontSize: 12, color: BRAND.umberSoft, marginTop: 2 }}>No processing fee</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: BRAND.umber, whiteSpace: "nowrap" }}>{fmt$(achTotal)}</div>
+                        <button className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => generatePaymentLink("bank")} disabled={bankLinkState === "loading"}>
+                          {bankLinkState === "loading" ? "Generating…" : bankLinkState === "done" ? "↺ Regenerate" : "Generate link"}
+                        </button>
+                      </div>
+                    </div>
+                    {bankLink && <div style={{ marginTop: 8, background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: BRAND.terracottaText, wordBreak: "break-all" }}>✓ {bankLink}</div>}
+                  </div>
                 </div>
-                {stripeLink
-                  ? <div style={{ background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 8, padding: "10px 14px", fontSize: 13, color: BRAND.terracottaText, wordBreak: "break-all" }}>✓ {stripeLink}</div>
-                  : <div style={{ background: BRAND.linen, border: `1px solid ${BRAND.border}`, borderRadius: 8, padding: "10px 14px", fontSize: 13, color: BRAND.umberSoft }}>Click "Generate from Stripe" to create a payment link automatically.</div>
-                }
               </>)}
 
               {section(<>
                 {label("Notes to church")}
-                <textarea {...input({ style: { minHeight: 80, resize: "vertical", lineHeight: 1.6 } })} value={notes} onChange={e => setNotes(e.target.value)} />
+                <textarea {...input({ style: { minHeight: 120, resize: "vertical", lineHeight: 1.6 } })} value={notes} onChange={e => setNotes(e.target.value)} />
               </>)}
 
               {sendError && (
@@ -386,7 +440,7 @@ function App() {
                   {sendState === "sending" ? "Sending…" : sendState === "sent" ? "✓ Sent!" : "Send invoice by email"}
                 </button>
                 <button className="btn btn-primary" onClick={() => setTab("preview")}>Preview</button>
-                <button className="btn btn-ghost" onClick={generateStripeLink} disabled={stripeState === "loading"}>{stripeState === "loading" ? "Generating…" : stripeState === "done" ? "✓ Payment link ready" : "Generate payment link"}</button>
+                <button className="btn btn-ghost" onClick={() => generatePaymentLink("card")} disabled={cardLinkState === "loading"}>{cardLinkState === "loading" ? "Generating…" : cardLinkState === "done" ? "✓ Card link ready" : "Generate card link"}</button>
               </div>
 
               {!configured && (
@@ -459,17 +513,29 @@ function App() {
 
                 {/* Total */}
                 <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 24 }}>
-                  <div style={{ background: BRAND.linen, borderRadius: 10, padding: "14px 20px", minWidth: 180, textAlign: "right" }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: BRAND.umberSoft, textTransform: "uppercase", letterSpacing: "0.06em" }}>Total due</p>
-                    <p style={{ margin: 0, fontFamily: "Playfair Display, serif", fontSize: 26, fontWeight: 600 }}>{fmt$(total)}</p>
+                  <div style={{ background: BRAND.linen, borderRadius: 10, padding: "14px 20px", minWidth: 260, textAlign: "right" }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: BRAND.umberSoft, textTransform: "uppercase", letterSpacing: "0.06em" }}>Amount due</p>
+                    <p style={{ margin: "0 0 10px", fontFamily: "Playfair Display, serif", fontSize: 26, fontWeight: 600 }}>{fmt$(subtotal)}</p>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 24, fontSize: 12, color: BRAND.umberSoft, paddingTop: 8, borderTop: `1px solid ${BRAND.border}` }}>
+                      <span>If paying by card</span><span style={{ fontWeight: 600, color: BRAND.umber }}>{fmt$(cardTotal)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", gap: 24, fontSize: 12, color: BRAND.umberSoft, marginTop: 4 }}>
+                      <span>If paying by bank transfer</span><span style={{ fontWeight: 600, color: BRAND.umber }}>{fmt$(achTotal)}</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Stripe link */}
-                {stripeLink && (
+                {/* Payment links */}
+                {cardLink && (
+                  <div style={{ background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 10, padding: "14px 18px", marginBottom: 12 }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#2e7d32", textTransform: "uppercase", letterSpacing: "0.06em" }}>Pay by card — {fmt$(cardTotal)}</p>
+                    <a href={cardLink} style={{ fontSize: 13, color: BRAND.terracottaText, wordBreak: "break-all" }}>{cardLink}</a>
+                  </div>
+                )}
+                {bankLink && (
                   <div style={{ background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 10, padding: "14px 18px", marginBottom: 16 }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#2e7d32", textTransform: "uppercase", letterSpacing: "0.06em" }}>Pay online</p>
-                    <a href={stripeLink} style={{ fontSize: 13, color: BRAND.terracottaText, wordBreak: "break-all" }}>{stripeLink}</a>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#2e7d32", textTransform: "uppercase", letterSpacing: "0.06em" }}>Pay by bank transfer — {fmt$(achTotal)}</p>
+                    <a href={bankLink} style={{ fontSize: 13, color: BRAND.terracottaText, wordBreak: "break-all" }}>{bankLink}</a>
                   </div>
                 )}
 
@@ -498,7 +564,7 @@ function App() {
                   {sendState === "sending" ? "Sending…" : sendState === "sent" ? "✓ Sent!" : "Send by email"}
                 </button>
                 <button className="btn btn-primary" onClick={() => window.print()}>Download PDF</button>
-                <button className="btn btn-ghost" onClick={generateStripeLink} disabled={stripeState === "loading"}>{stripeState === "loading" ? "Generating…" : stripeState === "done" ? "✓ Payment link ready" : "Generate payment link"}</button>
+                <button className="btn btn-ghost" onClick={() => generatePaymentLink("card")} disabled={cardLinkState === "loading"}>{cardLinkState === "loading" ? "Generating…" : cardLinkState === "done" ? "✓ Card link ready" : "Generate card link"}</button>
                 <button className="btn btn-ghost" onClick={() => setTab("edit")}>Edit</button>
               </div>
             )}

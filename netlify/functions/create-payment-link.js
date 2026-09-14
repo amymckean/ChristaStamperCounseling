@@ -24,7 +24,7 @@ exports.handler = async (event) => {
   };
 
   try {
-    const { amount, description, invoiceNumber } = JSON.parse(event.body);
+    const { amount, description, invoiceNumber, method } = JSON.parse(event.body);
 
     if (!amount || amount <= 0) {
       return {
@@ -34,6 +34,10 @@ exports.handler = async (event) => {
       };
     }
 
+    // "card" charges by debit/credit card; "bank" charges via ACH direct debit (US bank account),
+    // which has no processing fee, so it gets its own link at the un-marked-up amount.
+    const paymentMethodTypes = method === "bank" ? ["us_bank_account"] : ["card"];
+
     const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
     const price = await stripe.prices.create({
@@ -41,13 +45,14 @@ exports.handler = async (event) => {
       unit_amount: Math.round(amount * 100),
       product_data: {
         name: description || "Biblical Counseling Session",
-        metadata: { invoice_number: invoiceNumber || "" },
+        metadata: { invoice_number: invoiceNumber || "", payment_method: method || "card" },
       },
     });
 
     const paymentLink = await stripe.paymentLinks.create({
       line_items: [{ price: price.id, quantity: 1 }],
-      metadata: { invoice_number: invoiceNumber || "" },
+      payment_method_types: paymentMethodTypes,
+      metadata: { invoice_number: invoiceNumber || "", payment_method: method || "card" },
       after_completion: {
         type: "hosted_confirmation",
         hosted_confirmation: {
