@@ -23,6 +23,11 @@ const EMAILJS_SERVICE_ID  = "service_n8ttajd";   // Email Services → Service I
 const EMAILJS_TEMPLATE_ID = "template_dwm5utq";  // Email Templates → Template ID
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─── Manual bank transfer info (shown on the invoice as a no-fee payment option) ──
+// Fill this in with your account details, or leave blank to hide this option.
+const MANUAL_BANK_INFO = "";
+// ─────────────────────────────────────────────────────────────────────────────
+
 const BRAND = {
   linen: "#FAF6F0", card: "#FFFFFF", terracotta: "#A8623F",
   terracottaText: "#854A30", olive: "#6B7456", umber: "#3D352C",
@@ -89,6 +94,7 @@ function App() {
   const [ejsKey, setEjsKey]           = useState(EMAILJS_PUBLIC_KEY);
   const [ejsSvc, setEjsSvc]           = useState(EMAILJS_SERVICE_ID);
   const [ejsTpl, setEjsTpl]           = useState(EMAILJS_TEMPLATE_ID);
+  const [manualBankInfo, setManualBankInfo] = useState(MANUAL_BANK_INFO);
 
   const CARD_FEE_PCT  = 0.029; // Stripe's card rate: 2.9% + $0.30
   const CARD_FEE_FLAT = 0.30;
@@ -179,6 +185,7 @@ function App() {
       notes:           notes,
       card_link:       cardLink || "(Card payment link — generate in the app before sending)",
       bank_link:       bankLink || "(Bank transfer link — generate in the app before sending)",
+      manual_bank_info: manualBankInfo || "",
       provider_name:   PROVIDER.name,
       provider_email:  PROVIDER.email,
       provider_website: PROVIDER.website,
@@ -284,6 +291,15 @@ function App() {
           </>)}
 
           {section(<>
+            {sh("Manual bank transfer")}
+            <p style={{ fontSize: 13, color: BRAND.umberSoft, lineHeight: 1.6, marginBottom: 14 }}>
+              Optional. Add your account and routing number (or other transfer instructions) and it'll appear on every invoice as a third, fee-free payment option — the church's bookkeeper can push the transfer themselves from their own bank, no Stripe verification wait involved. Leave blank to hide it.
+            </p>
+            {label("Transfer instructions")}
+            <textarea {...input({ style: { minHeight: 90, resize: "vertical", lineHeight: 1.6 } })} value={manualBankInfo} onChange={e => setManualBankInfo(e.target.value)} placeholder={"Account name: Christa Stamper\nRouting number: 000000000\nAccount number: 000000000\nBank: Example Bank"} />
+          </>)}
+
+          {section(<>
             {sh("EmailJS template setup")}
             <p style={{ fontSize: 13, color: BRAND.umberSoft, lineHeight: 1.6, marginBottom: 12 }}>In EmailJS, create a new template with these variable names. The app fills them in automatically when sending:</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -302,6 +318,7 @@ function App() {
                 ["{{notes}}", "Notes to the church"],
                 ["{{card_link}}", "Card payment link URL"],
                 ["{{bank_link}}", "Bank transfer (ACH) payment link URL"],
+                ["{{manual_bank_info}}", "Manual bank transfer instructions (account/routing)"],
                 ["{{line_items_html}}", "HTML table of services"],
                 ["{{provider_name}}", "Christa Stamper"],
                 ["{{provider_email}}", "christa@christastamper.com"],
@@ -421,6 +438,18 @@ function App() {
                     </div>
                     {bankLink && <div style={{ marginTop: 8, background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: BRAND.terracottaText, wordBreak: "break-all" }}>✓ {bankLink}</div>}
                   </div>
+                  {manualBankInfo.trim() && (
+                    <div style={{ padding: "12px 14px", borderRadius: 8, border: `1px solid ${BRAND.border}` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: BRAND.umber }}>Bank transfer (manual)</div>
+                          <div style={{ fontSize: 12, color: BRAND.umberSoft, marginTop: 2 }}>No processing fee — they transfer directly from their bank</div>
+                        </div>
+                        <div style={{ fontSize: 16, fontWeight: 600, color: BRAND.umber, whiteSpace: "nowrap" }}>{fmt$(achTotal)}</div>
+                      </div>
+                      <div style={{ marginTop: 8, background: BRAND.linen, borderRadius: 8, padding: "8px 12px", fontSize: 12, color: BRAND.umberSoft, whiteSpace: "pre-wrap" }}>{manualBankInfo}</div>
+                    </div>
+                  )}
                 </div>
               </>)}
 
@@ -533,9 +562,15 @@ function App() {
                   </div>
                 )}
                 {bankLink && (
-                  <div style={{ background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 10, padding: "14px 18px", marginBottom: 16 }}>
-                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#2e7d32", textTransform: "uppercase", letterSpacing: "0.06em" }}>Pay by bank transfer — {fmt$(achTotal)}</p>
+                  <div style={{ background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 10, padding: "14px 18px", marginBottom: 12 }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: "#2e7d32", textTransform: "uppercase", letterSpacing: "0.06em" }}>Pay by bank transfer (ACH) — {fmt$(achTotal)}</p>
                     <a href={bankLink} style={{ fontSize: 13, color: BRAND.terracottaText, wordBreak: "break-all" }}>{bankLink}</a>
+                  </div>
+                )}
+                {manualBankInfo.trim() && (
+                  <div style={{ background: BRAND.linen, borderRadius: 10, padding: "14px 18px", marginBottom: 16 }}>
+                    <p style={{ margin: "0 0 4px", fontSize: 11, fontWeight: 600, color: BRAND.umberSoft, textTransform: "uppercase", letterSpacing: "0.06em" }}>Or pay by bank transfer (manual) — {fmt$(achTotal)}</p>
+                    <p style={{ margin: 0, fontSize: 13, color: BRAND.umber, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{manualBankInfo}</p>
                   </div>
                 )}
 
