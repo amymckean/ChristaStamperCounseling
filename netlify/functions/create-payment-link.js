@@ -53,6 +53,13 @@ exports.handler = async (event) => {
       line_items: [{ price: price.id, quantity: 1 }],
       payment_method_types: paymentMethodTypes,
       metadata: { invoice_number: invoiceNumber || "", payment_method: method || "card" },
+      // Metadata set directly on the Payment Link is NOT copied to the PaymentIntent
+      // it creates when someone pays — Stripe requires it here, under
+      // payment_intent_data, for that to happen. The webhook (stripe-webhook.js)
+      // reads invoice_number off the PaymentIntent, so without this it never sees it.
+      payment_intent_data: {
+        metadata: { invoice_number: invoiceNumber || "", payment_method: method || "card" },
+      },
       after_completion: {
         type: "hosted_confirmation",
         hosted_confirmation: {
