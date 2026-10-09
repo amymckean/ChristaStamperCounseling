@@ -107,6 +107,10 @@ function App() {
   const cardTotal = subtotal + cardFee;   // what they'd pay choosing card
   const achTotal   = subtotal;            // what they'd pay choosing bank transfer (no fee)
   const total = subtotal;                 // the invoice's base amount, before either payment path
+  const paymentLinksState =
+    (cardLinkState === "loading" || bankLinkState === "loading") ? "loading" :
+    (cardLinkState === "done" && bankLinkState === "done") ? "done" :
+    (cardLinkState === "error" || bankLinkState === "error") ? "error" : "idle";
 
   function updateLine(i, field, val) {
     setLines(prev => {
@@ -120,42 +124,105 @@ function App() {
     });
   }
 
-  async function generatePaymentLink(method) {
+  async function createLink(method, amount) {
+    const res = await fetch("/.netlify/functions/create-payment-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount,
+        method,
+        description: `Invoice ${invoiceNumber} — ${church || "Counseling Services"}`,
+        invoiceNumber,
+      }),
+    });
+    const data = await res.json();
+    if (!data.url) throw new Error(data.error || "No URL returned");
+    return data.url;
+  }
+
+  async function generatePaymentLinks() {
     if (!subtotal || subtotal <= 0) { alert("Please add at least one line item with an amount."); return; }
-    const amount = method === "bank" ? achTotal : cardTotal;
-    const setLink  = method === "bank" ? setBankLink : setCardLink;
-    const setState = method === "bank" ? setBankLinkState : setCardLinkState;
-    setState("loading");
-    try {
-      const res = await fetch("/.netlify/functions/create-payment-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount,
-          method,
-          description: `Invoice ${invoiceNumber} — ${church || "Counseling Services"}`,
-          invoiceNumber,
-        }),
-      });
-      const data = await res.json();
-      if (data.url) {
-        setLink(data.url);
-        setState("done");
-      } else {
-        throw new Error(data.error || "No URL returned");
-      }
-    } catch (err) {
-      setState("error");
-      alert("Failed to generate payment link: " + err.message);
+    setCardLinkState("loading");
+    setBankLinkState("loading");
+
+    const [cardResult, bankResult] = await Promise.allSettled([
+      createLink("card", cardTotal),
+      createLink("bank", achTotal),
+    ]);
+
+    if (cardResult.status === "fulfilled") {
+      setCardLink(cardResult.value);
+      setCardLinkState("done");
+    } else {
+      setCardLinkState("error");
+    }
+
+    if (bankResult.status === "fulfilled") {
+      setBankLink(bankResult.value);
+      setBankLinkState("done");
+    } else {
+      setBankLinkState("error");
+    }
+
+    const failures = [cardResult, bankResult].filter(r => r.status === "rejected");
+    if (failures.length) {
+      alert("Failed to generate payment link" + (failures.length > 1 ? "s" : "") + ": " + failures.map(f => f.reason.message).join("; "));
     }
   }
 
   async function sendInvoice() {
     if (!contactEmail) { setSendError("Please enter the church contact email."); return; }
     if (ejsKey === "YOUR_PUBLIC_KEY") { setSendError("EmailJS not configured yet — go to Settings to add your keys."); return; }
+    if (!subtotal || subtotal <= 0) { setSendError("Please add at least one line item with an amount."); return; }
 
     setSendState("sending");
     setSendError("");
+
+    // Make sure both payment links exist before sending, so an invoice never
+    // goes out with a placeholder instead of a real link just because the
+    // "Generate payment links" button above was never clicked.
+    let finalCardLink = cardLink;
+    let finalBankLink = bankLink;
+
+    if (!finalCardLink || !finalBankLink) {
+      if (!finalCardLink) setCardLinkState("loading");
+      if (!finalBankLink) setBankLinkState("loading");
+
+      const [cardResult, bankResult] = await Promise.allSettled([
+        finalCardLink ? Promise.resolve(finalCardLink) : createLink("card", cardTotal),
+        finalBankLink ? Promise.resolve(finalBankLink) : createLink("bank", achTotal),
+      ]);
+
+      if (!finalCardLink) {
+        if (cardResult.status === "fulfilled") {
+          finalCardLink = cardResult.value;
+          setCardLink(finalCardLink);
+          setCardLinkState("done");
+        } else {
+          setCardLinkState("error");
+        }
+      }
+
+      if (!finalBankLink) {
+        if (bankResult.status === "fulfilled") {
+          finalBankLink = bankResult.value;
+          setBankLink(finalBankLink);
+          setBankLinkState("done");
+        } else {
+          setBankLinkState("error");
+        }
+      }
+
+      if (!finalCardLink || !finalBankLink) {
+        setSendState("error");
+        setSendError(
+          "Couldn't generate the payment link" +
+          (!finalCardLink && !finalBankLink ? "s" : "") +
+          " automatically — generate it above, then send again."
+        );
+        return;
+      }
+    }
 
     const invoiceText = buildInvoiceText({ invoiceNumber, issueDate, dueDate, church, contactName, lines, notes, subtotal, cardFee, cardTotal, achTotal });
 
@@ -183,8 +250,8 @@ function App() {
       ach_total:       fmt$(achTotal),
       total_due:       fmt$(subtotal),
       notes:           notes,
-      card_link:       cardLink || "(Card payment link — generate in the app before sending)",
-      bank_link:       bankLink || "(Bank transfer link — generate in the app before sending)",
+      card_link:       finalCardLink,
+      bank_link:       finalBankLink,
       manual_bank_info: manualBankInfo || "",
       provider_name:   PROVIDER.name,
       provider_email:  PROVIDER.email,
@@ -406,7 +473,10 @@ function App() {
 
               {section(<>
                 {sh("Payment options")}
-                <p style={{ fontSize: 12, color: BRAND.umberSoft, marginBottom: 12 }}>Shown to the church on the invoice — generate a Stripe link for either or both. The price depends on how they choose to pay.</p>
+                <p style={{ fontSize: 12, color: BRAND.umberSoft, marginBottom: 12 }}>Shown to the church on the invoice. Every invoice needs both, so one click generates the card and bank transfer links together.</p>
+                <button className="btn btn-ghost" style={{ marginBottom: 12 }} onClick={generatePaymentLinks} disabled={paymentLinksState === "loading"}>
+                  {paymentLinksState === "loading" ? "Generating…" : paymentLinksState === "done" ? "↺ Regenerate links" : "Generate payment links"}
+                </button>
                 <div style={{ display: "grid", gap: 10 }}>
                   <div style={{ padding: "12px 14px", borderRadius: 8, border: `1px solid ${BRAND.border}` }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
@@ -414,12 +484,7 @@ function App() {
                         <div style={{ fontSize: 13, fontWeight: 600, color: BRAND.umber }}>Card</div>
                         <div style={{ fontSize: 12, color: BRAND.umberSoft, marginTop: 2 }}>Includes {fmt$(cardFee)} processing fee (2.9% + $0.30)</div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: BRAND.umber, whiteSpace: "nowrap" }}>{fmt$(cardTotal)}</div>
-                        <button className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => generatePaymentLink("card")} disabled={cardLinkState === "loading"}>
-                          {cardLinkState === "loading" ? "Generating…" : cardLinkState === "done" ? "↺ Regenerate" : "Generate link"}
-                        </button>
-                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: BRAND.umber, whiteSpace: "nowrap" }}>{fmt$(cardTotal)}</div>
                     </div>
                     {cardLink && <div style={{ marginTop: 8, background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: BRAND.terracottaText, wordBreak: "break-all" }}>✓ {cardLink}</div>}
                   </div>
@@ -429,12 +494,7 @@ function App() {
                         <div style={{ fontSize: 13, fontWeight: 600, color: BRAND.umber }}>Bank transfer (ACH)</div>
                         <div style={{ fontSize: 12, color: BRAND.umberSoft, marginTop: 2 }}>No processing fee</div>
                       </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ fontSize: 16, fontWeight: 600, color: BRAND.umber, whiteSpace: "nowrap" }}>{fmt$(achTotal)}</div>
-                        <button className="btn btn-ghost" style={{ padding: "6px 12px", fontSize: 12, whiteSpace: "nowrap" }} onClick={() => generatePaymentLink("bank")} disabled={bankLinkState === "loading"}>
-                          {bankLinkState === "loading" ? "Generating…" : bankLinkState === "done" ? "↺ Regenerate" : "Generate link"}
-                        </button>
-                      </div>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: BRAND.umber, whiteSpace: "nowrap" }}>{fmt$(achTotal)}</div>
                     </div>
                     {bankLink && <div style={{ marginTop: 8, background: "#f0f7f0", border: "1px solid #c8e6c9", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: BRAND.terracottaText, wordBreak: "break-all" }}>✓ {bankLink}</div>}
                   </div>
@@ -469,7 +529,6 @@ function App() {
                   {sendState === "sending" ? "Sending…" : sendState === "sent" ? "✓ Sent!" : "Send invoice by email"}
                 </button>
                 <button className="btn btn-primary" onClick={() => setTab("preview")}>Preview</button>
-                <button className="btn btn-ghost" onClick={() => generatePaymentLink("card")} disabled={cardLinkState === "loading"}>{cardLinkState === "loading" ? "Generating…" : cardLinkState === "done" ? "✓ Card link ready" : "Generate card link"}</button>
               </div>
 
               {!configured && (
@@ -599,7 +658,6 @@ function App() {
                   {sendState === "sending" ? "Sending…" : sendState === "sent" ? "✓ Sent!" : "Send by email"}
                 </button>
                 <button className="btn btn-primary" onClick={() => window.print()}>Download PDF</button>
-                <button className="btn btn-ghost" onClick={() => generatePaymentLink("card")} disabled={cardLinkState === "loading"}>{cardLinkState === "loading" ? "Generating…" : cardLinkState === "done" ? "✓ Card link ready" : "Generate card link"}</button>
                 <button className="btn btn-ghost" onClick={() => setTab("edit")}>Edit</button>
               </div>
             )}
